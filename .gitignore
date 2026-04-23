@@ -1,0 +1,12 @@
+# Ignore raw datasets
+dataset*.csv
+
+# Ignore processed datasets
+processed_dataset*.csv
+
+# Ignore large embeddings (optional)
+glove*.txt
+
+# Python cache
+__pycache__/
+*.pyc

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToxiGuard — Comment Toxicity Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0e14;
+      --surface: #14161f;
+      --surface2: #1c1f2e;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.13);
+      --text: #f0f1f5;
+      --muted: #7a7f99;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --safe: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --toxic-1: #ef4444;
+      --toxic-2: #dc2626;
+      --toxic-3: #f97316;
+      --toxic-4: #8b5cf6;
+      --toxic-5: #ec4899;
+      --toxic-6: #06b6d4;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glow-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-orb.one { width: 500px; height: 500px; top: -150px; left: -100px; background: rgba(108,99,255,0.12); }
+    .glow-orb.two { width: 400px; height: 400px; bottom: -100px; right: -80px; background: rgba(167,139,250,0.08); }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* Header */
+    .header { text-align: center; margin-bottom: 52px; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 14px;
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.3);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent2);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.75); }
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(36px, 6vw, 56px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #f0f1f5 0%, #a78bfa 60%, #6c63ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 14px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--muted);
+      font-weight: 300;
+      line-height: 1.6;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
+      transition: border-color 0.2s;
+    }
+    .card:focus-within {
+      border-color: rgba(108,99,255,0.4);
+      box-shadow: 0 0 0 4px rgba(108,99,255,0.08);
+    }
+
+    .label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      padding: 14px 16px;
+      resize: vertical;
+      min-height: 130px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    textarea:focus {
+      border-color: rgba(108,99,255,0.5);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+    }
+    textarea::placeholder { color: var(--muted); }
+
+    .char-count {
+      text-align: right;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 15px 24px;
+      background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      margin-top: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.2s;
+    }
+    .btn:hover::after { background: rgba(255,255,255,0.07); }
+    .btn:active { transform: scale(0.99); }
+
+    .btn-icon { font-size: 16px; }
+
+    /* Verdict */
+    .verdict {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 22px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 24px;
+      border: 1px solid transparent;
+    }
+    .verdict.safe {
+      background: rgba(34,197,94,0.08);
+      border-color: rgba(34,197,94,0.2);
+    }
+    .verdict.toxic {
+      background: rgba(239,68,68,0.08);
+      border-color: rgba(239,68,68,0.25);
+    }
+    .verdict-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .verdict-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .verdict.safe .verdict-title { color: var(--safe); }
+    .verdict.toxic .verdict-title { color: var(--danger); }
+    .verdict-desc { font-size: 13px; color: var(--muted); }
+
+    /* Labels row */
+    .labels-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .tag {
+      padding: 5px 13px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      text-transform: capitalize;
+    }
+    .tag.safe { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+    .tag.label-toxic { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+    .tag.label-severe_toxic { background: rgba(220,38,38,0.15); color: #fca5a5; border: 1px solid rgba(220,38,38,0.3); }
+    .tag.label-obscene { background: rgba(249,115,22,0.12); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
+    .tag.label-threat { background: rgba(139,92,246,0.12); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.25); }
+    .tag.label-insult { background: rgba(236,72,153,0.12); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.25); }
+    .tag.label-identity_hate { background: rgba(6,182,212,0.12); color: #67e8f9; border: 1px solid rgba(6,182,212,0.25); }
+
+    /* Score bars */
+    .score-section { margin-top: 4px; }
+    .score-section-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 52px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 11px;
+    }
+    .score-name {
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+    .score-name.active { color: var(--text); font-weight: 500; }
+
+    .bar-track {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      width: 0%;
+    }
+    .bar-fill.toxic { background: var(--toxic-1); }
+    .bar-fill.severe_toxic { background: var(--toxic-2); }
+    .bar-fill.obscene { background: var(--toxic-3); }
+    .bar-fill.threat { background: var(--toxic-4); }
+    .bar-fill.insult { background: var(--toxic-5); }
+    .bar-fill.identity_hate { background: var(--toxic-6); }
+
+    .score-pct {
+      font-size: 13px;
+      font-weight: 500;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .score-pct.high { color: var(--danger); }
+    .score-pct.mid { color: var(--warn); }
+    .score-pct.low { color: var(--muted); }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 52px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+    .footer a { color: var(--accent2); text-decoration: none; }
+
+    /* Empty state */
+    .empty-hint {
+      text-align: center;
+      padding: 36px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+
+    /* Animate results in */
+    .results-panel { animation: fadeUp 0.4s ease both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 520px) {
+      .score-row { grid-template-columns: 100px 1fr 44px; }
+      .wrapper { padding: 40px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="glow-orb one"></div>
+<div class="glow-orb two"></div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      AI-Powered Analysis
+    </div>
+    <h1>ToxiGuard</h1>
+    <p class="subtitle">Detect toxic language in real-time using deep learning. Paste any comment to analyze its content.</p>
+  </header>
+
+  <!-- Input Form -->
+  <div class="card">
+    <form method="POST" action="/">
+      <label class="label" for="comment">Comment to Analyze</label>
+      <textarea
+        id="comment"
+        name="comment"
+        placeholder="Paste or type a comment here…"
+        maxlength="2000"
+        oninput="document.getElementById('chars').textContent = this.value.length"
+      >{{ request.form.get('comment', '') }}</textarea>
+      <div class="char-count"><span id="chars">{{ request.form.get('comment', '')|length }}</span> / 2000</div>
+      <button type="submit" class="btn">
+        <span class="btn-icon">⚡</span>
+        Analyze Comment
+      </button>
+    </form>
+  </div>
+
+  {% if result %}
+  <div class="results-panel">
+
+    <!-- Verdict banner -->
+    {% set is_safe = final_labels == ['non-toxic'] %}
+    <div class="verdict {{ 'safe' if is_safe else 'toxic' }}">
+      <div class="verdict-icon">{{ '✅' if is_safe else '🚨' }}</div>
+      <div>
+        <div class="verdict-title">{{ 'Clean Comment' if is_safe else 'Toxic Content Detected' }}</div>
+        <div class="verdict-desc">
+          {% if is_safe %}
+            No harmful content found — this comment appears safe.
+          {% else %}
+            This comment was flagged for: {{ final_labels | join(', ') | replace('_', ' ') }}.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Labels -->
+    <div class="labels-wrap">
+      {% for lbl in final_labels %}
+        <span class="tag {{ 'safe' if lbl == 'non-toxic' else 'label-' + lbl }}">
+          {{ lbl | replace('_', ' ') }}
+        </span>
+      {% endfor %}
+    </div>
+
+    <!-- Score breakdown -->
+    <div class="card">
+      <div class="score-section-title">Confidence Scores</div>
+      <div class="score-section">
+        {% for label, score in result.items() %}
+          {% set pct = (score * 100) | round(1) %}
+          <div class="score-row">
+            <span class="score-name {{ 'active' if score > 0.5 else '' }}">
+              {{ label | replace('_', ' ') }}
+            </span>
+            <div class="bar-track">
+              <div
+                class="bar-fill {{ label }}"
+                style="width: {{ pct }}%"
+              ></div>
+            </div>
+            <span class="score-pct {{ 'high' if pct >= 50 else ('mid' if pct >= 20 else 'low') }}">
+              {{ pct }}%
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  {% else %}
+  <div class="empty-hint">
+    <div class="empty-icon">🔍</div>
+    Enter a comment above and click <strong>Analyze</strong> to see results.
+  </div>
+  {% endif %}
+
+  <footer class="footer">
+    ToxiGuard · Powered by deep learning &amp; Keras · Built with Flask<br/>
+    <span style="opacity:0.5;">Threshold: 0.5 · Labels: toxic, severe toxic, obscene, threat, insult, identity hate</span>
+  </footer>
+
+</div>
+
+<script>
+  // Animate bars after page load
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.bar-fill').forEach(bar => {
+      const target = bar.style.width;
+      bar.style.width = '0%';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          bar.style.width = target;
+        });
+      });
+    });
+  });
+
+  // Update char count on load
+  const ta = document.getElementById('comment');
+  if (ta) {
+    document.getElementById('chars').textContent = ta.value.length;
+  }
+</script>
+
+</body>
+</html>
