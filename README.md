@@ -201,6 +201,7 @@ TOXIC-COMMENT-PROJECT/
 │   └── index.html             # Frontend
 ├── glove.6B.100d.txt          # GloVe embeddings
 ├── notebook.ipynb             # Training notebook
+├── requirements.txt           # Requirements
 └── README.md                  # Project documentation
 ```
 
