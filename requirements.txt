@@ -1,0 +1,13 @@
+numpy==1.26.4
+pandas==2.2.2
+
+tensorflow==2.15.0
+keras==2.15.0
+
+scikit-learn==1.4.2
+
+flask==3.0.3
+
+nltk==3.9.1
+beautifulsoup4==4.12.3
+emoji==2.10.1
