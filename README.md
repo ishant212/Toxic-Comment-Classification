@@ -309,6 +309,7 @@ The system provides:
 |---------|--------|
 | Ishant  | [@ishant212](https://github.com/ishant212) |
 | Lakshya | [@x-lucky-x](https://github.com/X-ImLucky-X) |
+| Ayush   | [ayushx-d](https://github.com/ayushx-d) |
 
 ---
 
